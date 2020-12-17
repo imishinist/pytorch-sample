@@ -1,15 +1,45 @@
 #!/usr/bin/env python
 
-import torch #基本モジュール
-from torch.autograd import Variable #自動微分用
-import torch.nn as nn #ネットワーク構築用
-import torch.optim as optim #最適化関数
-import torch.nn.functional as F #ネットワーク用の様々な関数
-import torch.utils.data #データセット読み込み関連
+import torch  # 基本モジュール
+from torch.autograd import Variable  # 自動微分用
+import torch.nn as nn  # ネットワーク構築用
+import torch.optim as optim  # 最適化関数
+import torch.nn.functional as F  # ネットワーク用の様々な関数
+import torch.utils.data  # データセット読み込み関連
+
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = F.max_pool2d(F.relu(self.conv1(x)), (2, 2))
+        x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = x.view(-1, self.num_flat_features(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+    def num_flat_features(self, x):
+        # バッチの次元以外を平らにする
+        size = x.size()[1:]  # all dimensions except the batch dimension
+        num_features = 1
+        for s in size:
+            num_features *= s
+        return num_features
 
 
 if __name__ == '__main__':
-    x = torch.Tensor(5, 3) #5x3のTensorの定義
-    y = torch.rand(5, 3) #5x3の乱数で初期化したTensorの定義
-    z = x + y #普通に演算も可能
-    print(z)
+    net = Net()
+    print(net)
+    input = Variable(torch.randn(1, 1, 32, 32))
+    out = net(input)
+    print(out)
