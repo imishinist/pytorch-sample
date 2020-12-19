@@ -4,6 +4,7 @@ import gzip
 import pickle
 from pathlib import Path
 
+import fire
 import numpy as np
 import requests
 import torch
@@ -77,47 +78,61 @@ def fit(epochs, model, loss_func, opt, train_dl, valid_dl):
         val_loss = np.sum(np.multiply(losses, nums)) / np.sum(nums)
         print(epoch, val_loss)
 
+class NN_Cli(object):
+
+    def __data_path(self):
+        return Path("data")
+
+    def __load_dataset(self):
+        data_path = self.__data_path()
+        PATH = data_path / "mnist"
+
+        PATH.mkdir(parents=True, exist_ok=True)
+
+        URL = "https://github.com/pytorch/tutorials/raw/master/_static/"
+        FILENAME = "mnist.pkl.gz"
+        if not (PATH / FILENAME).exists():
+            content = requests.get(URL + FILENAME).content
+            (PATH / FILENAME).open("wb").write(content)
+
+        with gzip.open((PATH / FILENAME).as_posix(), "rb") as f:
+            ((x_train, y_train), (x_valid, y_valid), _) = pickle.load(f, encoding="latin-1")
+            print(x_train.shape)
+
+        x_train, y_train, x_valid, y_valid = map(
+            torch.tensor, (x_train, y_train, x_valid, y_valid)
+        )
+        train_ds = TensorDataset(x_train, y_train)
+        valid_ds = TensorDataset(x_valid, y_valid)
+        return (train_ds, valid_ds)
+
+    def learn(self):
+        (train_ds, valid_ds) = self.__load_dataset()
+
+        epochs = 100
+        bs = 64
+        lr = 0.1
+        loss_func = F.cross_entropy
+        print("epochs={epochs}, bs={bs}, lr={lr}, loss_func=", loss_func)
+
+        train_dl, valid_dl = get_data(train_ds, valid_ds, bs)
+        train_dl = WrappedDataLoader(train_dl, preprocess)
+        valid_dl = WrappedDataLoader(valid_dl, preprocess)
+
+        model = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 10, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d(1),
+            Lambda(lambda x: x.view(x.size(0), -1)),
+        )
+        opt = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+        fit(epochs, model, loss_func, opt, train_dl, valid_dl)
+
+        torch.save(model.state_dict(), DATA_PATH / "model.pth")
 
 if __name__ == '__main__':
-    DATA_PATH = Path("data")
-    PATH = DATA_PATH / "mnist"
-
-    PATH.mkdir(parents=True, exist_ok=True)
-
-    URL = "https://github.com/pytorch/tutorials/raw/master/_static/"
-    FILENAME = "mnist.pkl.gz"
-
-    if not (PATH / FILENAME).exists():
-        content = requests.get(URL + FILENAME).content
-        (PATH / FILENAME).open("wb").write(content)
-
-    with gzip.open((PATH / FILENAME).as_posix(), "rb") as f:
-        ((x_train, y_train), (x_valid, y_valid), _) = pickle.load(f, encoding="latin-1")
-        print(x_train.shape)
-
-    x_train, y_train, x_valid, y_valid = map(
-        torch.tensor, (x_train, y_train, x_valid, y_valid)
-    )
-    train_ds = TensorDataset(x_train, y_train)
-    valid_ds = TensorDataset(x_valid, y_valid)
-
-    bs = 64
-    lr = 0.1
-    loss_func = F.cross_entropy
-
-    train_dl, valid_dl = get_data(train_ds, valid_ds, bs)
-    train_dl = WrappedDataLoader(train_dl, preprocess)
-    valid_dl = WrappedDataLoader(valid_dl, preprocess)
-
-    model = nn.Sequential(
-        nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),
-        nn.ReLU(),
-        nn.Conv2d(16, 16, kernel_size=3, stride=2, padding=1),
-        nn.ReLU(),
-        nn.Conv2d(16, 10, kernel_size=3, stride=2, padding=1),
-        nn.ReLU(),
-        nn.AdaptiveAvgPool2d(1),
-        Lambda(lambda x: x.view(x.size(0), -1)),
-    )
-    opt = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    fit(100, model, loss_func, opt, train_dl, valid_dl)
+    fire.Fire(NN_Cli)
