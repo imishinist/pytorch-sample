@@ -15,6 +15,11 @@ install-package:
 
 $(OBJS): Makefile
 
+.PHONY: dcgan
+dcgan: dcgan.cpp
+	mkdir -p build && cd build && cmake -DCMAKE_PREFIX_PATH=$(PWD)/../thirdparty/libtorch/lib .. && cmake --build . --config Release && mv dcgan ..
+
+
 main: $(OBJS)
 	$(CXX) $(CPPFLAGS) $(OBJS) -o $@ $(LDFLAGS)
 
