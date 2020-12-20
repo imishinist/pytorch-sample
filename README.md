@@ -18,12 +18,6 @@ python3 -m venv .venv
 make install-package
 ```
 
-## Run
-
-```shell script
-python main.py
-```
-
 ## update package
 
 when you add some package, update requirements.txt.
