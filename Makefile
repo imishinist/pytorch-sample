@@ -2,7 +2,7 @@ CC=clang
 CXX=clang++
 
 CPPFLAGS=-g -I./thirdparty/libtorch/include/ -std=c++14
-LDFLAGS=-pthread
+LDFLAGS=-pthread -L./thirdparty/libtorch/lib/
 OBJS=main.o
 
 .PHONY: save-package
