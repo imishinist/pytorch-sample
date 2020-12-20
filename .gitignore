@@ -5,3 +5,4 @@ runs/
 a.out*
 main
 *.o
+thirdparty/libtorch
